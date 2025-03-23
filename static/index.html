@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cliente de Chat WebSocket con Fiber</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .chat-container {
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            padding: 10px;
+        }
+        #messages {
+            height: 400px;
+            overflow-y: auto;
+            border: 1px solid #eee;
+            margin-bottom: 10px;
+            padding: 10px;
+        }
+        input[type="text"] {
+            width: 70%;
+            padding: 8px;
+            margin-right: 10px;
+        }
+        button {
+            padding: 8px 16px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        .login-container {
+            margin-bottom: 20px;
+        }
+        .room-list {
+            margin-top: 20px;
+        }
+        .room-item {
+            cursor: pointer;
+            padding: 5px;
+            margin: 5px 0;
+            background-color: #f0f0f0;
+            border-radius: 3px;
+        }
+        .room-item:hover {
+            background-color: #e0e0e0;
+        }
+        .system-message {
+            color: #888;
+            font-style: italic;
+        }
+    </style>
+</head>
+<body>
+    <h1>Cliente de Chat WebSocket con Fiber</h1>
+    
+    <div class="login-container" id="login-form">
+        <h2>Ingresar al Chat</h2>
+        <input type="text" id="username" placeholder="Nombre de usuario" />
+        <input type="text" id="room" placeholder="Sala (por defecto: general)" />
+        <button onclick="joinRoom()">Unirse</button>
+    </div>
+
+    <div class="chat-container" id="chat-container" style="display: none;">
+        <h2 id="room-title">Sala: general</h2>
+        <div id="messages"></div>
+        <div>
+            <input type="text" id="message" placeholder="Escribe un mensaje..." />
+            <button onclick="sendMessage()">Enviar</button>
+        </div>
+        <div class="room-list">
+            <h3>Cambiar de sala:</h3>
+            <div id="room-options">
+                <div class="room-item" onclick="changeRoom('general')">general</div>
+            </div>
+            <input type="text" id="new-room" placeholder="Nueva sala" />
+            <button onclick="addRoom()">Añadir sala</button>
+        </div>
+    </div>
+
+    <script>
+        let conn;
+        let username = '';
+        let currentRoom = 'general';
+        let rooms = ['general'];
+
+        function joinRoom() {
+            username = document.getElementById('username').value.trim();
+            const room = document.getElementById('room').value.trim() || 'general';
+            
+            if (!username) {
+                alert('Por favor ingresa un nombre de usuario');
+                return;
+            }
+            
+            currentRoom = room;
+            document.getElementById('room-title').textContent = `Sala: ${currentRoom}`;
+            
+            // Ocultar formulario y mostrar chat
+            document.getElementById('login-form').style.display = 'none';
+            document.getElementById('chat-container').style.display = 'block';
+            
+            // Agregar la sala a la lista si no existe
+            if (!rooms.includes(room)) {
+                rooms.push(room);
+                updateRoomList();
+            }
+            
+            // Conectar WebSocket
+            connectWebSocket();
+        }
+
+        function connectWebSocket() {
+            // Cerrar conexión previa si existe
+            if (conn) {
+                conn.close();
+            }
+            
+            // Establecer nueva conexión
+            const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+            const wsUrl = `${wsProtocol}//${window.location.host}/ws?username=${encodeURIComponent(username)}&room=${encodeURIComponent(currentRoom)}`;
+            
+            conn = new WebSocket(wsUrl);
+            
+            conn.onopen = function(evt) {
+                console.log("Conexión WebSocket establecida");
+                addMessage("Te has conectado a la sala " + currentRoom, true);
+            };
+            
+            conn.onclose = function(evt) {
+                console.log("Conexión WebSocket cerrada");
+                addMessage("Conexión cerrada", true);
+            };
+            
+            conn.onmessage = function(evt) {
+                addMessage(evt.data, evt.data.startsWith("SYSTEM:"));
+            };
+            
+            conn.onerror = function(evt) {
+                console.error("Error WebSocket:", evt);
+                addMessage("Error en la conexión", true);
+            };
+        }
+
+        function sendMessage() {
+            const messageInput = document.getElementById('message');
+            const message = messageInput.value.trim();
+            
+            if (!message) {
+                return;
+            }
+            
+            if (conn && conn.readyState === WebSocket.OPEN) {
+                conn.send(message);
+                messageInput.value = '';
+            } else {
+                addMessage("No estás conectado", true);
+            }
+        }
+
+        function addMessage(message, isSystem) {
+            const messagesDiv = document.getElementById('messages');
+            const messageElement = document.createElement('div');
+            
+            if (isSystem) {
+                messageElement.className = 'system-message';
+            }
+            
+            messageElement.textContent = message;
+            messagesDiv.appendChild(messageElement);
+            messagesDiv.scrollTop = messagesDiv.scrollHeight;
+        }
+
+        function changeRoom(room) {
+            currentRoom = room;
+            document.getElementById('room-title').textContent = `Sala: ${currentRoom}`;
+            connectWebSocket();
+        }
+
+        function addRoom() {
+            const newRoomInput = document.getElementById('new-room');
+            const newRoom = newRoomInput.value.trim();
+            
+            if (!newRoom) {
+                return;
+            }
+            
+            if (!rooms.includes(newRoom)) {
+                rooms.push(newRoom);
+                updateRoomList();
+            }
+            
+            newRoomInput.value = '';
+            changeRoom(newRoom);
+        }
+
+        function updateRoomList() {
+            const roomList = document.getElementById('room-options');
+            roomList.innerHTML = '';
+            
+            rooms.forEach(room => {
+                const roomElement = document.createElement('div');
+                roomElement.className = 'room-item';
+                roomElement.textContent = room;
+                roomElement.onclick = function() {
+                    changeRoom(room);
+                };
+                roomList.appendChild(roomElement);
+            });
+        }
+
+        // Permitir enviar mensajes con Enter
+        document.getElementById('message').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                sendMessage();
+            }
+        });
+    </script>
+</body>
+</html>
