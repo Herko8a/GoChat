@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Cliente de Chat WebSocket con Fiber</title>
+    <title>WebSocket Chat Client with Fiber</title>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -62,29 +62,29 @@
     </style>
 </head>
 <body>
-    <h1>Cliente de Chat WebSocket con Fiber</h1>
+    <h1>WebSocket Chat Client with Fiber</h1>
     
     <div class="login-container" id="login-form">
-        <h2>Ingresar al Chat</h2>
-        <input type="text" id="username" placeholder="Nombre de usuario" />
-        <input type="text" id="room" placeholder="Sala (por defecto: general)" />
-        <button onclick="joinRoom()">Unirse</button>
+        <h2>Join the Chat</h2>
+        <input type="text" id="username" placeholder="Username" />
+        <input type="text" id="room" placeholder="Room (default: general)" />
+        <button onclick="joinRoom()">Join</button>
     </div>
 
     <div class="chat-container" id="chat-container" style="display: none;">
-        <h2 id="room-title">Sala: general</h2>
+        <h2 id="room-title">Room: general</h2>
         <div id="messages"></div>
         <div>
-            <input type="text" id="message" placeholder="Escribe un mensaje..." />
-            <button onclick="sendMessage()">Enviar</button>
+            <input type="text" id="message" placeholder="Type a message..." />
+            <button onclick="sendMessage()">Send</button>
         </div>
         <div class="room-list">
-            <h3>Cambiar de sala:</h3>
+            <h3>Switch room:</h3>
             <div id="room-options">
                 <div class="room-item" onclick="changeRoom('general')">general</div>
             </div>
-            <input type="text" id="new-room" placeholder="Nueva sala" />
-            <button onclick="addRoom()">Añadir sala</button>
+            <input type="text" id="new-room" placeholder="New room" />
+            <button onclick="addRoom()">Add room</button>
         </div>
     </div>
 
@@ -99,47 +99,47 @@
             const room = document.getElementById('room').value.trim() || 'general';
             
             if (!username) {
-                alert('Por favor ingresa un nombre de usuario');
+                alert('Please enter a username');
                 return;
             }
             
             currentRoom = room;
-            document.getElementById('room-title').textContent = `Sala: ${currentRoom}`;
+            document.getElementById('room-title').textContent = `Room: ${currentRoom}`;
             
-            // Ocultar formulario y mostrar chat
+            // Hide form and show chat
             document.getElementById('login-form').style.display = 'none';
             document.getElementById('chat-container').style.display = 'block';
             
-            // Agregar la sala a la lista si no existe
+            // Add the room to the list if it doesn't exist
             if (!rooms.includes(room)) {
                 rooms.push(room);
                 updateRoomList();
             }
             
-            // Conectar WebSocket
+            // Connect WebSocket
             connectWebSocket();
         }
 
         function connectWebSocket() {
-            // Cerrar conexión previa si existe
+            // Close previous connection if it exists
             if (conn) {
                 conn.close();
             }
             
-            // Establecer nueva conexión
+            // Establish new connection
             const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
             const wsUrl = `${wsProtocol}//${window.location.host}/ws?username=${encodeURIComponent(username)}&room=${encodeURIComponent(currentRoom)}`;
             
             conn = new WebSocket(wsUrl);
             
             conn.onopen = function(evt) {
-                console.log("Conexión WebSocket establecida");
-                addMessage("Te has conectado a la sala " + currentRoom, true);
+                console.log("WebSocket connection established");
+                addMessage("You have connected to the room " + currentRoom, true);
             };
             
             conn.onclose = function(evt) {
-                console.log("Conexión WebSocket cerrada");
-                addMessage("Conexión cerrada", true);
+                console.log("WebSocket connection closed");
+                addMessage("Connection closed", true);
             };
             
             conn.onmessage = function(evt) {
@@ -147,8 +147,8 @@
             };
             
             conn.onerror = function(evt) {
-                console.error("Error WebSocket:", evt);
-                addMessage("Error en la conexión", true);
+                console.error("WebSocket error:", evt);
+                addMessage("Connection error", true);
             };
         }
 
@@ -164,7 +164,7 @@
                 conn.send(message);
                 messageInput.value = '';
             } else {
-                addMessage("No estás conectado", true);
+                addMessage("You are not connected", true);
             }
         }
 
@@ -183,7 +183,7 @@
 
         function changeRoom(room) {
             currentRoom = room;
-            document.getElementById('room-title').textContent = `Sala: ${currentRoom}`;
+            document.getElementById('room-title').textContent = `Room: ${currentRoom}`;
             connectWebSocket();
         }
 
@@ -219,7 +219,7 @@
             });
         }
 
-        // Permitir enviar mensajes con Enter
+        // Allow sending messages with Enter
         document.getElementById('message').addEventListener('keypress', function(e) {
             if (e.key === 'Enter') {
                 sendMessage();

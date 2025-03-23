@@ -7,7 +7,7 @@ import (
 	"github.com/gofiber/websocket/v2"
 )
 
-// Room representa una sala de chat
+// Room represents a chat room
 type Room struct {
 	Name       string
 	Clients    map[*Client]bool
@@ -17,7 +17,7 @@ type Room struct {
 	Mutex      sync.Mutex
 }
 
-// NewRoom crea una nueva sala
+// NewRoom creates a new room
 func NewRoom(name string) *Room {
 	return &Room{
 		Name:       name,
@@ -28,35 +28,35 @@ func NewRoom(name string) *Room {
 	}
 }
 
-// Add new user
+// Add a new user
 func (r *Room) AddClient(c *websocket.Conn) {
 
-	// Se crea el cliente
+	// Create the client
 	client := NewClient(c, r)
 
-	// Registramos al cliente en la sala
+	// Register the client in the room
 	r.Register <- client
 
-	// Goroutine para enviar mensajes al cliente
+	// Goroutine to send messages to the client
 	go client.WritePump()
 
-	// Gorutine para recibir mensajes del cliente
+	// Goroutine to receive messages from the client
 	client.ReadPump()
 }
 
-// Run inicia el bucle de la sala
+// Run starts the room loop
 func (r *Room) Run() {
 
 	for {
 
-		log.Println("SYSTEM [" + r.Name + "]: Toy ciclado")
+		log.Println("SYSTEM [" + r.Name + "]: Running loop")
 
 		select {
 		case client := <-r.Register:
 			r.Mutex.Lock()
 			r.Clients[client] = true
 			r.Mutex.Unlock()
-			msg := []byte("SYSTEM: " + client.Username + " se ha unido a la sala [" + r.Name + "]")
+			msg := []byte("SYSTEM: " + client.Username + " has joined the room [" + r.Name + "]")
 			log.Println(string(msg))
 			r.Broadcast <- msg
 		case client := <-r.Unregister:
@@ -66,17 +66,17 @@ func (r *Room) Run() {
 				close(client.Send)
 			}
 			r.Mutex.Unlock()
-			msg := []byte("SYSTEM: " + client.Username + " ha salido de la sala [" + r.Name + "]")
+			msg := []byte("SYSTEM: " + client.Username + " has left the room [" + r.Name + "]")
 			log.Println(string(msg))
 			r.Broadcast <- msg
 		case message := <-r.Broadcast:
-			log.Print("SYSTEM ["+r.Name+"]: Se va repartir mensaje: ", string(message))
+			log.Print("SYSTEM ["+r.Name+"]: Broadcasting message: ", string(message))
 			r.Mutex.Lock()
 			for client := range r.Clients {
 				select {
 				case client.Send <- message:
 				default:
-					log.Println("SYSTEM [" + r.Name + "]: Se cierra conexión del cliente, " + client.Username)
+					log.Println("SYSTEM [" + r.Name + "]: Closing client connection, " + client.Username)
 					close(client.Send)
 					delete(r.Clients, client)
 				}

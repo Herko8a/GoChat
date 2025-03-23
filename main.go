@@ -10,17 +10,17 @@ import (
 
 func main() {
 
-	// Se define un Hub de Salas de Chat
+	// Define a Chat Room Hub
 	hub := chat.NewHub()
 
 	app := fiber.New(fiber.Config{
 		AppName: "Go WebSocket Chat",
 	})
 
-	// Configurar middleware para WebSocket
+	// Configure middleware for WebSocket
 	app.Use("/ws", func(c *fiber.Ctx) error {
 
-		// Verificar si la conexión es un WebSocket
+		// Check if the connection is a WebSocket
 		if websocket.IsWebSocketUpgrade(c) {
 			c.Locals("allowed", true)
 			return c.Next()
@@ -29,16 +29,16 @@ func main() {
 
 	})
 
-	// Servir archivos estáticos
+	// Serve static files
 	app.Static("/", "./static")
 
-	// Endpoint para WebSocket
+	// WebSocket endpoint
 	app.Get("/ws", websocket.New(func(c *websocket.Conn) {
 
-		// Se crea u obtiene la sala en el Hub
+		// Create or get the room in the Hub
 		room := hub.GetOrCreateRoom(c)
 
-		// Se agrega cliente a la sala y se queda escuchando
+		// Add client to the room and start listening
 		room.AddClient(c)
 
 	}))
